@@ -1,203 +1,208 @@
-# 💳 Aprobación de Registro de Pagos
+# 💳 Payment Registration Approval
+
+**English** | [Español](./README.es.md)
 
 [![Odoo](https://img.shields.io/badge/Odoo-19.0%20Community-875A7B?logo=odoo&logoColor=white)](https://www.odoo.com/)
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-19.0.1.0.0-blue)](./__manifest__.py)
+[![Version](https://img.shields.io/badge/version-19.0.1.0.0-blue)](./__manifest__.py)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Licencia](https://img.shields.io/badge/licencia-LGPL--3-green)](./LICENSE)
+[![License](https://img.shields.io/badge/license-LGPL--3-green)](./LICENSE)
 
-Addon de Odoo 19 que exige que un **aprobador designado** registre los pagos
-que alcanzan o superan un monto configurable. Si otro usuario lo intenta, el
-pago no se crea: se notifica al aprobador por correo y por WhatsApp.
+Odoo 19 addon that requires a **designated approver** to register payments
+that reach or exceed a configurable amount. If any other user tries, the
+payment is not created: the approver is notified by email and WhatsApp.
 
-## Descripción
+## Description
 
-En muchas empresas el registro de pagos debe pasar por una persona de
-confianza. Este módulo intercepta el asistente **Registrar pago** y la
-confirmación manual desde el menú **Pagos**, y bloquea la operación antes de
-crear el asiento contable cuando el monto supera el límite. La autorización es
-simple por diseño: **quien registra el pago es quien lo autoriza**. No hay
-estados pendientes, solicitudes en cola ni pagos a medias.
+In many companies, registering payments must go through a trusted person.
+This module intercepts the **Register payment** wizard and the manual
+confirmation from the **Payments** menu, and blocks the operation before the
+journal entry is created when the amount exceeds the limit. Authorization is
+simple by design: **whoever registers the payment is the one who authorizes
+it**. There are no pending states, queued requests, or half-created payments.
 
-## Tabla de contenidos
+## Table of contents
 
-- [Descripción](#descripción)
-- [Cómo funciona](#cómo-funciona)
-- [Stack tecnológico](#stack-tecnológico)
-- [Requisitos previos](#requisitos-previos)
-- [Instalación](#instalación)
-- [Configuración](#configuración)
-- [Uso](#uso)
-- [Comandos disponibles](#comandos-disponibles)
-- [Estructura del módulo](#estructura-del-módulo)
-- [Verificación manual](#verificación-manual)
-- [Solución de problemas](#solución-de-problemas)
-- [Limitaciones](#limitaciones)
-- [Contribuir](#contribuir)
-- [Licencia](#licencia)
+- [Description](#description)
+- [How it works](#how-it-works)
+- [Tech stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Available commands](#available-commands)
+- [Module structure](#module-structure)
+- [Manual verification](#manual-verification)
+- [Troubleshooting](#troubleshooting)
+- [Limitations](#limitations)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Cómo funciona
+## How it works
 
-1. Un usuario abre el asistente **Registrar pago** sobre una o varias facturas
-   y pulsa **Crear pagos**.
-2. `account.payment.register.action_create_payments` evalúa la regla con
-   `get_approval_requirement`. Si el monto convertido a la moneda de la
-   compañía es **igual o mayor** al mínimo, el pago **no se crea**.
-3. Se envía un correo al aprobador con el link directo a cada factura y se
-   abre el diálogo **Pago pendiente de aprobación** con el detalle, el estado
-   del correo y un botón **Notificar por WhatsApp**.
-4. El aprobador entra a Odoo con su usuario y registra el pago desde la
-   factura. Ese registro constituye la autorización.
-5. Como red de seguridad, `_init_payments` revalida justo antes de crear el
-   asiento contable, y `account.payment.action_post` bloquea la confirmación
-   manual desde el menú **Pagos**.
+1. A user opens the **Register payment** wizard on one or more invoices and
+   clicks **Create payments**.
+2. `account.payment.register.action_create_payments` evaluates the rule with
+   `get_approval_requirement`. If the amount converted to the company currency
+   is **equal to or greater than** the minimum, the payment **is not created**.
+3. An email is sent to the approver with a direct link to each invoice, and
+   the **Payment pending approval** dialog opens with the details, the email
+   status, and a **Notify by WhatsApp** button.
+4. The approver logs into Odoo with their own user and registers the payment
+   from the invoice. That registration constitutes the authorization.
+5. As a safety net, `_init_payments` revalidates right before creating the
+   journal entry, and `account.payment.action_post` blocks manual confirmation
+   from the **Payments** menu.
 
-No se bloquean:
+The following are not blocked:
 
-- Al **aprobador** configurado.
-- Las operaciones de sistema (`env.su`: cron, uid 1).
-- Los pagos por debajo del monto mínimo.
-- Las instalaciones con la opción desactivada.
+- The configured **approver**.
+- System operations (`env.su`: cron, uid 1).
+- Payments below the minimum amount.
+- Installations where the option is disabled.
 
 > [!NOTE]
-> El monto se compara en la moneda de la compañía. Si el pago es en otra
-> moneda, se convierte con el tipo de cambio de la fecha del pago.
+> The amount is compared in the company currency. If the payment is in another
+> currency, it is converted using the exchange rate of the payment date.
 
 > [!IMPORTANT]
-> Un fallo del servidor SMTP no interrumpe el bloqueo: se registra en el log,
-> el diálogo avisa que el correo no se envió y el botón de WhatsApp sigue
-> disponible como respaldo.
+> An SMTP server failure does not interrupt the block: it is logged, the dialog
+> warns that the email was not sent, and the WhatsApp button remains available
+> as a fallback.
 
 > [!WARNING]
-> Los links de los correos y del diálogo usan `web.base.url`. Debe apuntar al
-> dominio público de la instancia; si queda en `localhost`, los enlaces no
-> servirán para el aprobador.
+> Email and dialog links use `web.base.url`. It must point to the instance's
+> public domain; if it stays on `localhost`, the links will not work for the
+> approver.
 
-## Stack tecnológico
+## Tech stack
 
-- **Odoo 19 Community** (addon de `account` y `mail`).
+- **Odoo 19 Community** (addon for `account` and `mail`).
 - **Python 3.10+**.
-- **PostgreSQL** como base de datos de la instancia.
-- **XML/QWeb** para vistas y ajustes.
-- **CSV** para reglas de acceso.
-- Sin dependencias externas de Python.
+- **PostgreSQL** as the instance database.
+- **XML/QWeb** for views and settings.
+- **CSV** for access rules.
+- No external Python dependencies.
 
-## Requisitos previos
+## Prerequisites
 
-- Una instancia funcional de **Odoo 19 Community**.
-- **Python 3.10 o superior**, según lo requiera tu instalación de Odoo.
-- **PostgreSQL** accesible por la instancia.
-- El módulo base **Contabilidad** (`account`) instalado.
-- Acceso de administrador para instalar el addon y editar los ajustes.
-- SMTP configurado si quieres que el correo al aprobador salga (opcional;
-  WhatsApp funciona sin SMTP).
+- A working **Odoo 19 Community** instance.
+- **Python 3.10 or higher**, as required by your Odoo installation.
+- **PostgreSQL** reachable by the instance.
+- The base **Accounting** module (`account`) installed.
+- Administrator access to install the addon and edit the settings.
+- SMTP configured if you want the approver email to be sent (optional;
+  WhatsApp works without SMTP).
 
-## Instalación
+## Installation
 
-### 1. Copiar el addon al `addons_path`
+### 1. Copy the addon into `addons_path`
 
 ```bash
-# Opción A: copiar la carpeta del addon
+# Option A: copy the addon folder
 cp -R account_payment_approval /opt/odoo/custom-addons/
 ```
 
 ```bash
-# Opción B: clonar el repositorio, si está versionado en Git
-git clone <url-del-repositorio> /opt/odoo/custom-addons/account_payment_approval
+# Option B: clone the repository, if it is versioned in Git
+git clone <repository-url> /opt/odoo/custom-addons/account_payment_approval
 ```
 
 > [!IMPORTANT]
-> La carpeta debe llamarse exactamente `account_payment_approval`. Odoo usa el
-> nombre de la carpeta como nombre técnico del módulo para instalarlo,
-> actualizarlo y registrar sus XML IDs.
+> The folder must be named exactly `account_payment_approval`. Odoo uses the
+> folder name as the module's technical name to install it, update it, and
+> register its XML IDs.
 
-### 2. Registrar el directorio en la configuración
+### 2. Register the directory in the configuration
 
-Añade la carpeta a `addons_path` en tu `odoo.conf`:
+Add the folder to `addons_path` in your `odoo.conf`:
 
 ```ini
 [options]
 addons_path = /opt/odoo/custom-addons,/opt/odoo/addons
 ```
 
-### 3. Reiniciar la instancia
+### 3. Restart the instance
 
 ```bash
 sudo systemctl restart odoo
 ```
 
-### 4. Instalar el módulo
+### 4. Install the module
 
-Desde la interfaz: **Aplicaciones → Actualizar lista de aplicaciones**, busca
-**Aprobación de Registro de Pagos** e instala.
+From the UI: **Apps → Update Apps List**, search for **Aprobación de Registro
+de Pagos** and install it.
 
-O por línea de comandos:
-
-```bash
-odoo -d mi_base -i account_payment_approval --stop-after-init
-```
-
-Si tu instalación usa el binario `odoo-bin`, sustituye `odoo` por `odoo-bin`.
-
-Para aplicar cambios después de actualizar el código:
+Or from the command line:
 
 ```bash
-odoo -d mi_base -u account_payment_approval --stop-after-init
+odoo -d my_db -i account_payment_approval --stop-after-init
 ```
 
-## Configuración
+If your installation uses the `odoo-bin` binary, replace `odoo` with
+`odoo-bin`.
 
-Ve a **Contabilidad → Ajustes → Aprobación de pagos**. El bloque solo es
-visible para usuarios con permisos de administración de contabilidad.
+To apply changes after updating the code:
 
-| Ajuste | Parámetro (`ir.config_parameter`) | Valor por defecto | Descripción |
+```bash
+odoo -d my_db -u account_payment_approval --stop-after-init
+```
+
+## Configuration
+
+Go to **Accounting → Settings → Payment approval**. The block is only visible
+to users with accounting administration permissions.
+
+| Setting | Parameter (`ir.config_parameter`) | Default value | Description |
 |---|---|---|---|
-| Requerir aprobación para pagos | `account_payment_approval.enabled` | `False` | Activa el bloqueo. |
-| Monto mínimo | `account_payment_approval.amount` | `1.0` | En moneda de la compañía. Se bloquea si el monto convertido es igual o mayor. |
-| Aprobador | `account_payment_approval.user_id` | vacío | Usuario interno (`share = False`) que puede registrar los pagos bloqueados. |
-| WhatsApp del aprobador | `account_payment_approval.whatsapp` | vacío | Número con código de país, solo dígitos (ej. `5216681234567`). Si se deja vacío, se usa el móvil o teléfono del contacto del aprobador. |
+| Require approval for payments | `account_payment_approval.enabled` | `False` | Enables the block. |
+| Minimum amount | `account_payment_approval.amount` | `1.0` | In company currency. Blocked when the converted amount is equal to or greater. |
+| Approver | `account_payment_approval.user_id` | empty | Internal user (`share = False`) allowed to register blocked payments. |
+| Approver WhatsApp | `account_payment_approval.whatsapp` | empty | Number with country code, digits only (e.g. `5216681234567`). If empty, the approver contact's mobile or phone is used. |
 
 > [!IMPORTANT]
-> Si la opción está activa y no hay aprobador configurado, cualquier pago
-> lanza un `UserError` que pide configurarlo. No se permite operar a ciegas.
+> If the option is enabled and no approver is configured, any payment raises a
+> `UserError` asking for one. Operating blindly is not allowed.
 
 > [!NOTE]
-> El aprobador necesita permisos de **Facturación/Contabilidad** para poder
-> registrar el pago. Si no los tiene, Odoo no le mostrará la acción.
+> The approver needs **Invoicing/Accounting** permissions to register the
+> payment. Without them, Odoo will not show the action.
 
-### Variables de entorno
+### Environment variables
 
-Este addon **no lee variables de entorno**. Toda su configuración vive en
-`ir.config_parameter` con el prefijo `account_payment_approval.` y se edita
-desde los ajustes de Contabilidad.
+This addon **does not read environment variables**. All its configuration
+lives in `ir.config_parameter` with the `account_payment_approval.` prefix and
+is edited from the Accounting settings.
 
-## Uso
+## Usage
 
-1. Activa **Requerir aprobación para pagos** y elige un aprobador.
-2. Define el **monto mínimo** en la moneda de la compañía.
-3. Como usuario distinto del aprobador, registra un pago igual o mayor al
-   mínimo: aparecerá el diálogo y **no** se creará el pago.
-4. El aprobador recibe el correo (si hay SMTP) y puede registrarlo él mismo.
-5. Si el correo falla o no hay SMTP, usa **Notificar por WhatsApp** desde el
-   diálogo para abrir `wa.me` con el número y el link de la factura
-   prellenados.
+1. Enable **Require approval for payments** and choose an approver.
+2. Set the **minimum amount** in the company currency.
+3. As a user other than the approver, register a payment equal to or greater
+   than the minimum: the dialog will appear and the payment will **not** be
+   created.
+4. The approver receives the email (if SMTP is configured) and can register it
+   themselves.
+5. If the email fails or there is no SMTP, use **Notify by WhatsApp** from the
+   dialog to open `wa.me` with the number and the invoice link prefilled.
 
-Para que los vendedores no vean el botón de registro de pagos, quítales el
-grupo **Facturación** (`account.group_account_invoice`). Aunque lo conserven,
-el módulo rechaza el intento con un mensaje que indica quién debe autorizarlo.
+To keep salespeople from seeing the payment registration button, remove the
+**Invoicing** group (`account.group_account_invoice`) from them. Even if they
+keep it, the module rejects the attempt with a message indicating who must
+authorize it.
 
-## Comandos disponibles
+## Available commands
 
-El repositorio no incluye `Makefile`, `package.json` ni un runner de tareas.
-Los comandos relevantes son los de Odoo:
+The repository does not include a `Makefile`, `package.json`, or a task
+runner. The relevant commands are Odoo's:
 
-| Comando | Propósito |
+| Command | Purpose |
 |---|---|
-| `odoo -d <db> -i account_payment_approval --stop-after-init` | Instalar el módulo. |
-| `odoo -d <db> -u account_payment_approval --stop-after-init` | Actualizar el módulo tras cambios en código, vistas o seguridad. |
-| `odoo -d <db> -u account_payment_approval --test-tags /account_payment_approval --stop-after-init` | Ejecutar la suite del addon cuando exista. Hoy no hay tests automatizados. |
-| `odoo shell -d <db>` | Consola interactiva para inspeccionar parámetros o usuarios. |
+| `odoo -d <db> -i account_payment_approval --stop-after-init` | Install the module. |
+| `odoo -d <db> -u account_payment_approval --stop-after-init` | Update the module after changes to code, views, or security. |
+| `odoo -d <db> -u account_payment_approval --test-tags /account_payment_approval --stop-after-init` | Run the addon suite when it exists. There are no automated tests today. |
+| `odoo shell -d <db>` | Interactive console to inspect parameters or users. |
 
-## Estructura del módulo
+## Module structure
 
 ```text
 account_payment_approval/
@@ -205,11 +210,11 @@ account_payment_approval/
 ├── __manifest__.py
 ├── models/
 │   ├── __init__.py
-│   ├── payment_approval.py              # Regla única, correo y URL wa.me
-│   ├── account_payment_register.py      # Asistente "Registrar pago"
-│   ├── account_payment.py               # Confirmación manual desde Pagos
-│   ├── payment_approval_notify.py       # Diálogo transitorio
-│   └── res_config_settings.py           # Ajustes de Contabilidad
+│   ├── payment_approval.py              # Single rule, email and wa.me URL
+│   ├── account_payment_register.py      # "Register payment" wizard
+│   ├── account_payment.py               # Manual confirmation from Payments
+│   ├── payment_approval_notify.py       # Transient dialog
+│   └── res_config_settings.py           # Accounting settings
 ├── security/
 │   └── ir.model.access.csv
 ├── views/
@@ -217,73 +222,73 @@ account_payment_approval/
 │   └── res_config_settings_views.xml
 ├── AGENTS.md
 ├── LICENSE
-└── README.md
+├── README.md
+└── README.es.md
 ```
 
-`models/payment_approval.py` es la **única fuente de la regla y las
-notificaciones**. Si otro módulo necesita reutilizarla, debe llamar a
-`get_approval_requirement` o `check_payment_approval` en lugar de duplicar la
-validación.
+`models/payment_approval.py` is the **single source of the rule and the
+notifications**. If another module needs to reuse it, it must call
+`get_approval_requirement` or `check_payment_approval` instead of duplicating
+the validation.
 
-## Verificación manual
+## Manual verification
 
-No hay suite automatizada ni CI en este repositorio. Con el módulo instalado,
-comprueba:
+There is no automated suite or CI in this repository. With the module
+installed, check:
 
-1. Como usuario distinto del aprobador, registra un pago igual o mayor al
-   mínimo: debe aparecer el diálogo y **no** crearse el pago.
-2. Como aprobador, el mismo pago debe registrarse con normalidad.
-3. Un pago por debajo del mínimo debe pasar sin diálogo.
-4. Confirma un pago manual desde el menú **Pagos** con un usuario no aprobador:
-   debe rechazarse.
-5. Desactiva la opción y verifica que todos los usuarios pueden registrar
-   pagos.
-6. Prueba un pago en otra moneda y confirma que la comparación usa el tipo de
-   cambio de la fecha del pago.
+1. As a user other than the approver, register a payment equal to or greater
+   than the minimum: the dialog must appear and the payment must **not** be
+   created.
+2. As the approver, the same payment must register normally.
+3. A payment below the minimum must go through without a dialog.
+4. Confirm a manual payment from the **Payments** menu with a non-approver
+   user: it must be rejected.
+5. Disable the option and verify that all users can register payments.
+6. Test a payment in another currency and confirm that the comparison uses the
+   exchange rate of the payment date.
 
-## Solución de problemas
+## Troubleshooting
 
-| Síntoma | Causa probable | Solución |
+| Symptom | Likely cause | Fix |
 |---|---|---|
-| El módulo no aparece en Aplicaciones | La carpeta no está en `addons_path` o falta reiniciar | Revisa `odoo.conf`, reinicia y actualiza la lista de aplicaciones. |
-| Error al instalar por nombre de módulo | La carpeta no se llama `account_payment_approval` | Renombra la carpeta y vuelve a intentar. |
-| El aprobador no recibe el correo | SMTP no configurado o correo del contacto vacío | Configura el servidor de correo y el email del aprobador; usa WhatsApp como respaldo. |
-| Los links abren `localhost` | `web.base.url` no apunta al dominio público | Ajusta `web.base.url` en Parámetros del sistema. |
-| No aparece el botón de WhatsApp | El aprobador no tiene número configurado | Define **WhatsApp del aprobador** o el teléfono/móvil de su contacto. |
-| El aprobador no puede registrar el pago | Le faltan permisos de Facturación/Contabilidad | Asígnale el grupo correspondiente. |
-| Cambié el nombre de la carpeta y el módulo falla | El nombre técnico cambió y los registros antiguos no se renombran | Migra los XML IDs y parámetros, o desinstala y reinstala. |
+| The module does not appear in Apps | The folder is not in `addons_path` or the instance was not restarted | Check `odoo.conf`, restart, and update the apps list. |
+| Error installing by module name | The folder is not named `account_payment_approval` | Rename the folder and try again. |
+| The approver does not receive the email | SMTP not configured or contact email empty | Configure the mail server and the approver's email; use WhatsApp as a fallback. |
+| Links open `localhost` | `web.base.url` does not point to the public domain | Set `web.base.url` in System Parameters. |
+| The WhatsApp button does not appear | The approver has no number configured | Set **Approver WhatsApp** or the phone/mobile of their contact. |
+| The approver cannot register the payment | Missing Invoicing/Accounting permissions | Assign the corresponding group. |
+| I renamed the folder and the module fails | The technical name changed and old records are not renamed | Migrate the XML IDs and parameters, or uninstall and reinstall. |
 
-## Limitaciones
+## Limitations
 
-- La aprobación es **"quien registra, autoriza"**: no existe un flujo de
-  "envío la solicitud y otro la aprueba después". Eso requeriría un módulo con
-  pagos en estado pendiente y conciliación diferida.
-- No se persiste ningún estado de aprobación: el diálogo es transitorio.
-- La comparación siempre se hace en la moneda de la compañía.
-- El envío de correo depende del SMTP de Odoo; el módulo no lo configura.
-- No hay integración con la API de WhatsApp: solo se genera un enlace `wa.me`.
+- Approval is **"whoever registers, authorizes"**: there is no "submit the
+  request and someone approves it later" flow. That would require a module
+  with payments in a pending state and deferred reconciliation.
+- No approval state is persisted: the dialog is transient.
+- The comparison is always made in the company currency.
+- Email delivery depends on Odoo's SMTP; the module does not configure it.
+- There is no WhatsApp API integration: only a `wa.me` link is generated.
 
-## Contribuir
+## Contributing
 
-- Escribe código, comentarios, mensajes de usuario y documentación **en
-  español**.
-- Envuelve los mensajes visibles con `_()` de Odoo.
-- Mantén la regla de negocio en `models/payment_approval.py`; no dupliques
-  validaciones en otros modelos.
-- Si cambias vistas, seguridad o la lógica, sube la versión en
-  `__manifest__.py` y actualiza el módulo con `-u`.
-- Ejecuta la [verificación manual](#verificación-manual) antes de dar un cambio
-  por terminado. No hay linter, CI ni suite de tests en el repositorio.
-- No renombres la carpeta ni las claves `account_payment_approval.*`: son
-  identificadores persistentes en la base de datos.
+- Write code, comments, user messages, and documentation **in Spanish**.
+- Wrap visible messages with Odoo's `_()`.
+- Keep the business rule in `models/payment_approval.py`; do not duplicate
+  validations in other models.
+- If you change views, security, or the logic, bump the version in
+  `__manifest__.py` and update the module with `-u`.
+- Run the [manual verification](#manual-verification) before considering a
+  change done. There is no linter, CI, or test suite in the repository.
+- Do not rename the folder or the `account_payment_approval.*` keys: they are
+  persistent identifiers in the database.
 
-## Licencia
+## License
 
-Este addon es **software libre y gratuito** para todos. Se distribuye bajo la
-**GNU Lesser General Public License v3.0** (LGPL-3), la misma licencia que
-Odoo. Puedes usarlo, modificarlo y redistribuirlo conforme a sus términos.
+This addon is **free and open software** for everyone. It is distributed under
+the **GNU Lesser General Public License v3.0** (LGPL-3), the same license as
+Odoo. You may use, modify, and redistribute it under its terms.
 
-El texto completo de la licencia está en [`LICENSE`](./LICENSE), que incluye
-la LGPL-3 y el texto de la GPL-3 al que aquella remite.
+The full license text is in [`LICENSE`](./LICENSE), which includes LGPL-3 and
+the GPL-3 text it refers to.
 
-Autor: **ssant0**.
+Author: **ssant0**.
