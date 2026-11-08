@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.account.payment.approval</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='pay_invoice_online_setting_container']" position="after">
+                <block title="Aprobación de pagos" id="account_payment_approval">
+                    <setting id="payment_approval_enabled_setting"
+                             string="Requerir aprobación para pagos"
+                             help="Solo el aprobador seleccionado puede registrar pagos iguales o mayores al monto mínimo.">
+                        <field name="payment_approval_enabled"/>
+                    </setting>
+                    <setting id="payment_approval_amount_setting"
+                             string="Monto mínimo"
+                             help="Monto en la moneda de la compañía (MXN). Los pagos iguales o mayores requieren al aprobador."
+                             invisible="not payment_approval_enabled">
+                        <field name="payment_approval_amount" class="oe_inline"/>
+                    </setting>
+                    <setting id="payment_approval_user_setting"
+                             string="Aprobador"
+                             help="Usuario que puede registrar pagos arriba del límite. Debe tener permisos de Facturación/Contabilidad."
+                             invisible="not payment_approval_enabled">
+                        <field name="payment_approval_user_id"
+                               options="{'no_create': True, 'no_open': True}"/>
+                    </setting>
+                    <setting id="payment_approval_whatsapp_setting"
+                             string="WhatsApp del aprobador"
+                             help="Número con código de país, sin + ni espacios (ej. 5216681234567). Si se deja vacío, se usa el teléfono del aprobador."
+                             invisible="not payment_approval_enabled">
+                        <field name="payment_approval_whatsapp" placeholder="5216681234567"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>
